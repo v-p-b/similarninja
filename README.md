@@ -1,34 +1,56 @@
-# Sample Plugin (v1.0 alpha)
-Author: **Vector 35 LLC**
-
-_This is a short description meant to fit on one line._
-
+# SimilarNinja Plugin (v0.1 alpha)
+Author: **buherator**
+_Find similar functions with Binary Ninja_
 ## Description:
 
-This is a longer description meant for a sample plugin that demonstrates the metadata format for Binary Ninja plugins.
+This is a partial implementation of the [KOKA algorithm](http://joxeankoret.com/blog/2018/11/04/new-cfg-based-heuristic-diaphora/) for CFG matching. 
 
-The forthcoming plugin installer will be able to parse these files automatically to allow easy selection and installation. 
+Early stage of development, code is unstable. 
+
+### Why?
+
+The licensing model of IDA sucks, we need tools for independent frameworks. Also see Goals.
+
+### Goals
+
+* Easy fine tuning at src level
+* No external databases
+  * SQLite based compatibility layer for Diaphora would be nice though
+
+## TODO
+
+A lot of things...
+
+* More mathcer algorithms
+  * Support for non-SSP based results
+  * Algorithms from the [original paper](https://census-labs.com/media/efficient-features-bindiff.pdf):
+    * Dominance tree based 
+* Calculate similarity levels
+* Better integration with the UI
+
+### Binary Ninja API deficiencies
+
+* Instruction level classification  
+* Data XRefs
+
 
 ## Minimum Version
 
 This plugin requires the following minimum version of Binary Ninja:
 
- * release - 9999
+ * release - 0
  * dev - 1.0.dev-576
-
 
 ## Required Dependencies
 
 The following dependencies are required for this plugin:
 
- * pip - array, of, pip, dependencies
- * installers - https://bogus-domain/this-package.exe
- * other - The sample plugin requires [this random package](https://bogus-domain/this-package/) be installed.
- * apt - apt, packages
-
+ * pip - 
+ * installers - 
+ * other - 
+ * apt - 
 
 ## License
+This plugin is released under a GPLv2 license as required by Diaphora. 
 
-This plugin is released under a [MIT](LICENSE) license.
-
-
+Adding a proper LICENSE file is TODO...
