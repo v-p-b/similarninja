@@ -40,6 +40,8 @@ FEATURE_FUNC_NO_RET = 41
 FEATURE_FUNC_LIB = 43
 FEATURE_FUNC_THUNK = 47 
 
+# End of Diaphora prime constants
+
 LLIL_CALLS = [ LowLevelILOperation.LLIL_CALL,
                LowLevelILOperation.LLIL_CALL_OUTPUT_SSA,
                LowLevelILOperation.LLIL_CALL_PARAM,
@@ -48,39 +50,55 @@ LLIL_CALLS = [ LowLevelILOperation.LLIL_CALL,
                LowLevelILOperation.LLIL_CALL_STACK_SSA,
              ]
 
-def bbl_type(b):
-    if len(b.incoming_edges) == 0:
-        return NODE_ENTRY
-    if len(b.outgoing_edges) == 0:
-        return NODE_EXIT
-    return NODE_NORMAL
 
-def bbl_edges(b):
-    ins = b.incoming_edges
-    outs = b.outgoing_edges
-    ret = 1
+class SPPBBLProvider:
+    @staticmethod
+    def calculate(bbl):
+        pass
 
-    for e in outs:
-        ret *= EDGE_OUT_CONDITIONAL
-    for e in ins:
-        ret *= EDGE_IN_CONDITIONAL
+class SPPFunctionProvider:
+    @staticmethod
+    def calculate(func):
+        pass
 
-    return ret
+class BBLTypeFeatures(SPPBBLProvider):
+    @staticmethod
+    def calculate(b):
+        ret = 1
+        
+        if len(b.incoming_edges) == 0:
+            ret *= NODE_ENTRY
+        if len(b.outgoing_edges) == 0:
+            ret *= NODE_EXIT
+        ret *= NODE_NORMAL
+        return ret
 
-def bbl_instruction_features(b):
-    # [TODO] Binary Ninja API for instruction classification
-    return 1
+class BBLEdgeFeatures(SPPBBLProvider):
+    @staticmethod
+    def calculate(b):
+        ret = 1
+        
+        ins = b.incoming_edges
+        outs = b.outgoing_edges
+            
+        for e in outs:
+            ret *= EDGE_OUT_CONDITIONAL
+        for e in ins:
+            ret *= EDGE_IN_CONDITIONAL
 
-def gen_spp(bv):
-    results={}
-    for func in bv.functions:
-        results[func.start] = 1
+        return ret
+class BBLInstructionFeatures(SPPBBLProvider):
+    @staticmethod
+    def calculate(b):
+        # [TODO] Binary Ninja API for instruction classification
+        return 1
+
+class FuncStronglyConnectedFeatures(SPPFunctionProvider):
+    @staticmethod
+    def calculate(func):
         bb_relations = {}
+        ret = 1
         for block in func.low_level_il:
-            results[func.start]*=bbl_type(block)
-            results[func.start]*=bbl_edges(block)
-            results[func.start]*=bbl_instruction_features(block)
-
             # Creating bb_relations 
             bb_relations[block.start] = []
             for e in block.outgoing_edges:
@@ -91,24 +109,42 @@ def gen_spp(bv):
                     bb_relations[e.source.start].append(block.start)
                 except KeyError:
                     bb_relations[e.source.start] = [block.start]
-        # log_info(repr(bb_relations))
-        # Extracting function level features 
         try:
             strongly_connected = strongly_connected_components(bb_relations)
             for sc in strongly_connected:
                 if len(sc) > 1:
-                    results[func.start] *= FEATURE_LOOP
+                    ret *= FEATURE_LOOP
                 else:
                     if sc[0] in bb_relations and sc[0] in bb_relations[sc[0]]:
-                        results[func.start] *= FEATURE_LOOP
-            results[func.start] *= FEATURE_STRONGLY_CONNECTED ^ len(strongly_connected)
+                        ret *= FEATURE_LOOP
+            ret *= FEATURE_STRONGLY_CONNECTED ^ len(strongly_connected)
         except:
             log_error("Exception: %s" % (sys.exc_info()[1]))
+        return ret
+
+class FuncFlagsFeatures(SPPFunctionProvider):
+    @staticmethod
+    def calculate(func):
+        ret = 1    
         if not func.can_return:
-            results[func.start] *= FEATURE_FUNC_NO_RET
+            ret *= FEATURE_FUNC_NO_RET
         if func.symbol.type is SymbolType.ImportedFunctionSymbol:
-            results[func.start] *= FEATURE_FUNC_LIB
+            ret *= FEATURE_FUNC_LIB
         # [TODO] Binary Ninja API for Thunks
+        return ret
+
+SPP_PROVIDERS=[BBLTypeFeatures, BBLEdgeFeatures, BBLInstructionFeatures, FuncStronglyConnectedFeatures, FuncFlagsFeatures]
+
+def gen_spp(bv):
+    results={}
+    for func in bv.functions:
+        results[func.start] = 1
+        for p in SPP_PROVIDERS:
+            for block in func.low_level_il:
+                if issubclass(p,SPPBBLProvider):
+                    results[func.start] *= p.calculate(block)    
+            if issubclass(p,SPPFunctionProvider):
+                results[func.start] *= p.calculate(func)
 
     log_info(repr(results))
     out = open(get_save_filename_input("Filename to save function hashes:","json","output.json"),"wb")

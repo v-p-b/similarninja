@@ -8,9 +8,9 @@ def invert_map(m):
     out={}
     for k, v in m.iteritems():
         if v in out:
-            out[v] = -1 # We don't care about common SPP's
+            out[long(v)] = -1 # We don't care about common SPP's
         else:
-            out[v] = int(k)
+            out[long(v)] = int(k)
     return out
 
 with open(sys.argv[1],"r") as f0:
