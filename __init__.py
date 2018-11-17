@@ -117,10 +117,12 @@ class FuncStronglyConnectedFeatures(SPPFunctionProvider):
                 else:
                     if sc[0] in bb_relations and sc[0] in bb_relations[sc[0]]:
                         ret *= FEATURE_LOOP
-            ret *= FEATURE_STRONGLY_CONNECTED ^ len(strongly_connected)
+            ret *= FEATURE_STRONGLY_CONNECTED ** len(strongly_connected)
         except:
             log_error("Exception: %s" % (sys.exc_info()[1]))
         return ret
+
+
 
 class FuncFlagsFeatures(SPPFunctionProvider):
     @staticmethod
@@ -133,19 +135,47 @@ class FuncFlagsFeatures(SPPFunctionProvider):
         # [TODO] Binary Ninja API for Thunks
         return ret
 
+class FeatureProvider:
+    def calculate(self, func):
+        pass
+
+    @staticmethod
+    def compare(f0, f1):
+        pass
+
+class SPPFeatureProvider(FeatureProvider):
+    def __init__(self, features=[]):
+        self.features=features
+
+    def calculate(self, func):
+        ret=1
+        for p in self.features:
+            for block in func.low_level_il:
+                if issubclass(p,SPPBBLProvider):
+                    ret *= p.calculate(block)    
+            if issubclass(p,SPPFunctionProvider):
+                ret *= p.calculate(func)
+        return ret
+
+    @staticmethod
+    def compare(f0,f1):
+        if f0 == f1:
+            return 1.0
+        else:
+            return 0.5
+
 SPP_PROVIDERS=[BBLTypeFeatures, BBLEdgeFeatures, BBLInstructionFeatures, FuncStronglyConnectedFeatures, FuncFlagsFeatures]
+
+PROVIDERS = [SPPFeatureProvider(SPP_PROVIDERS)]
 
 def gen_spp(bv):
     results={}
     for func in bv.functions:
-        results[func.start] = 1
-        for p in SPP_PROVIDERS:
-            for block in func.low_level_il:
-                if issubclass(p,SPPBBLProvider):
-                    results[func.start] *= p.calculate(block)    
-            if issubclass(p,SPPFunctionProvider):
-                results[func.start] *= p.calculate(func)
-
+        idx=long(func.start)
+        results[idx] = [None] * len(PROVIDERS)
+        for i,p in enumerate(PROVIDERS):
+            results[idx][i] = p.calculate(func)
+        
     log_info(repr(results))
     out = open(get_save_filename_input("Filename to save function hashes:","json","output.json"),"wb")
     out.write(json.dumps(results))
