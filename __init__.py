@@ -1,6 +1,8 @@
 from binaryninja import *
 from tarjan_sort import *
+import json
 import sys
+
 # Prime constants from Diaphora: https://github.com/joxeankoret/diaphora/blob/master/jkutils/graph_hashes.py
 
 #-------------------------------------------------------------------------------
@@ -102,6 +104,15 @@ def gen_spp(bv):
             results[func.start] *= FEATURE_STRONGLY_CONNECTED ^ len(strongly_connected)
         except:
             log_error("Exception: %s" % (sys.exc_info()[1]))
+        if not func.can_return:
+            results[func.start] *= FEATURE_FUNC_NO_RET
+        if func.symbol.type is SymbolType.ImportedFunctionSymbol:
+            results[func.start] *= FEATURE_FUNC_LIB
+        # [TODO] Binary Ninja API for Thunks
+
     log_info(repr(results))
+    out = open(get_save_filename_input("Filename to save function hashes:","json","output.json"),"wb")
+    out.write(json.dumps(results))
+    out.close()
 
 PluginCommand.register("SimilarNinja - Generate SPPs", "Generates SPP hashes for all functions", gen_spp)
