@@ -1,55 +1,8 @@
 from binaryninja import *
 from tarjan_sort import *
+from spp_primes import *
 import json
 import sys
-
-# Prime constants from Diaphora: https://github.com/joxeankoret/diaphora/blob/master/jkutils/graph_hashes.py
-
-#-------------------------------------------------------------------------------
-# Different type of basic blocks (graph nodes).
-NODE_ENTRY = 2
-NODE_EXIT = 3
-NODE_NORMAL = 5
-
-#
-# NOTE: In the current implementation (Nov-2018) all edges are considered as if
-# they were conditional. Keep reading...
-#
-EDGE_IN_CONDITIONAL = 7
-EDGE_OUT_CONDITIONAL = 11
-
-#
-# Reserved but unused because, probably, it doesn't make sense when comparing
-# multiple different architectures.
-#
-EDGE_IN_UNCONDITIONAL = 13
-EDGE_OUT_UNCONDITIONAL = 17
-
-# 
-# The following are feature types that aren't applied at basic block but rather
-# at function level. The idea is that if we do at function level we will have no
-# problems finding the same function that was re-ordered because of some crazy
-# code a different compiler decided to create (i.e., resilient to reordering).
-#
-FEATURE_LOOP = 19
-FEATURE_CALL = 23
-FEATURE_DATA_REFS = 29
-FEATURE_CALL_REF = 31
-FEATURE_STRONGLY_CONNECTED = 37
-FEATURE_FUNC_NO_RET = 41
-FEATURE_FUNC_LIB = 43
-FEATURE_FUNC_THUNK = 47 
-
-# End of Diaphora prime constants
-
-LLIL_CALLS = [ LowLevelILOperation.LLIL_CALL,
-               LowLevelILOperation.LLIL_CALL_OUTPUT_SSA,
-               LowLevelILOperation.LLIL_CALL_PARAM,
-               LowLevelILOperation.LLIL_CALL_SSA,
-               LowLevelILOperation.LLIL_CALL_STACK_ADJUST,
-               LowLevelILOperation.LLIL_CALL_STACK_SSA,
-             ]
-
 
 class SPPBBLProvider:
     @staticmethod
@@ -158,11 +111,45 @@ class SPPFeatureProvider(FeatureProvider):
         return ret
 
     @staticmethod
+    def _primes(n):
+        # This is slow as hell for large numbers
+        i = 0
+        primes=[]
+        while n not in ALL_PRIMES and n != 1:
+            if n % ALL_PRIMES[i] == 0:
+                primes.append(ALL_PRIMES[i])
+                n = n / ALL_PRIMES[i]
+            else:
+                i += 1
+                if i >= len(ALL_PRIMES): 
+                    log_error("Something is fucky with SPP primes! %x " % (n))
+                    break
+        return primes
+
+    @staticmethod
+    def _hcfnaive(a,b): 
+        if(b==0): 
+            return a 
+        else: 
+            return SPPFeatureProvider._hcfnaive(b,a%b) 
+
+    @staticmethod
     def compare(f0,f1):
         if f0 == f1:
             return 1.0
+        if f0 == 0 or f1 == 0:
+            return 0.0 
         else:
-            return 0.5
+            hcf = SPPFeatureProvider._hcfnaive(f0,f1)
+            f0_hcf_primes=SPPFeatureProvider._primes(f0/hcf)
+            f1_hcf_primes=SPPFeatureProvider._primes(f1/hcf)
+            try:
+                if len(f0_hcf_primes) > len(f1_hcf_primes):
+                    return 1-(float(len(f0_hcf_primes))/len(SPPFeatureProvider._primes(f0)))
+                else:
+                    return 1-(float(len(f1_hcf_primes))/len(SPPFeatureProvider._primes(f1)))
+            except OverflowError:
+                return 0.0
 
 class DigraphFeatureProvider(FeatureProvider):
     def __init__(self):
@@ -189,18 +176,36 @@ class DigraphFeatureProvider(FeatureProvider):
         block=func.get_basic_block_at(func.start)
         
         value=self.dfs(block, 0)
-        log_info("Final Value: %d" % value)
+        #log_info("Final Value: %d" % value)
         return value
+
+    @staticmethod
+    def compare(f0,f1):
+        binlen0=float(len(bin(f0)))
+        binlen1=float(len(bin(f1)))
+        hamming=float(bin(f0^f1).count('1'))
+        if binlen0 >= binlen1:
+            return 1.0-(hamming/binlen0)
+        else:
+            return 1.0-(hamming/binlen1)
 
 class BBLCountProvider(FeatureProvider):
     def calculate(self, func):
         return len(func.basic_blocks)
 
+    @staticmethod
+    def compare(f0,f1):
+        
+        if f0>=f1:
+            return 1-(float(f0-f1)/f0)
+        else:
+            return 1-(float(f1-f0)/f1)
+
 SPP_PROVIDERS=[BBLTypeFeatures, BBLEdgeFeatures, BBLInstructionFeatures, FuncStronglyConnectedFeatures, FuncFlagsFeatures]
 
 PROVIDERS = [SPPFeatureProvider(SPP_PROVIDERS),DigraphFeatureProvider(), BBLCountProvider()]
 
-def gen_spp(bv):
+def gen_feature(bv):
     results={}
     for func in bv.functions:
         idx=long(func.start)
@@ -213,4 +218,38 @@ def gen_spp(bv):
     out.write(json.dumps(results))
     out.close()
 
-PluginCommand.register("SimilarNinja - Generate Feature Vectors", "Generates Feature Vectors for all functions", gen_spp)
+def compare_data(bv):
+    f0=open(get_open_filename_input("filename0:","*"),"r")
+    f1=open(get_open_filename_input("filename1:","*"),"r")
+    #f0=open("/tmp/1291.json","r")
+    #f1=open("/tmp/1292.json","r")
+    data0=json.loads(f0.read())
+    data1=json.loads(f1.read())
+    func_num=1
+    for func0, feat0 in data0.iteritems():
+        log_info("Function (%d/%d)" % (func_num, len(data0)))
+        func_num+=1
+        if func_num > 100 : return
+        sims0 = [None] * len(PROVIDERS)
+        sim_avg0=0.0
+        func_match=None
+        feat_match=None
+        for func1, feat1 in data1.iteritems():
+            sims = [None] * len(PROVIDERS)
+            for i, p in enumerate(PROVIDERS):
+                sims[i]=p.compare(feat0[i],feat1[i])
+            sim_avg=0.0
+            for s in sims:
+                sim_avg += s
+            sim_avg = sim_avg / len(sims)        
+
+            if sim_avg > sim_avg0:
+                sim_avg0=sim_avg
+                sims0=sims
+                func_match=func1
+                feat_match=feat1
+        
+        log_info("%x <-> %x %s (%f)\n%s %s" % (long(func0), long(func_match), repr(sims0), sim_avg0, feat0, feat_match))
+                
+
+PluginCommand.register("SimilarNinja - Generate Feature Vectors", "Generates Feature Vectors for all functions", gen_feature)
