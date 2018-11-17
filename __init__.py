@@ -150,7 +150,7 @@ class SPPFeatureProvider(FeatureProvider):
     def calculate(self, func):
         ret=1
         for p in self.features:
-            for block in func.low_level_il:
+            for block in func.basic_blocks:
                 if issubclass(p,SPPBBLProvider):
                     ret *= p.calculate(block)    
             if issubclass(p,SPPFunctionProvider):
@@ -164,9 +164,41 @@ class SPPFeatureProvider(FeatureProvider):
         else:
             return 0.5
 
+class DigraphFeatureProvider(FeatureProvider):
+    def __init__(self):
+        self.visited=set()
+
+    def dfs(self,block,value):
+        #log_info("Entering %x value: %x" % (block.start,value))
+        
+        if block.start not in self.visited:  
+            value *= 2    
+            value += 1
+            #log_info("Not visited yet! %x" % (value))
+            self.visited.add(block.start)
+        else:
+            return value
+
+        for e in block.outgoing_edges:
+            value=self.dfs(e.target, value)
+        value *= 2
+        #log_info("Leaving %x Value: %x" % (block.start,value))       
+        return value
+
+    def calculate(self,func):
+        block=func.get_basic_block_at(func.start)
+        
+        value=self.dfs(block, 0)
+        log_info("Final Value: %d" % value)
+        return value
+
+class BBLCountProvider(FeatureProvider):
+    def calculate(self, func):
+        return len(func.basic_blocks)
+
 SPP_PROVIDERS=[BBLTypeFeatures, BBLEdgeFeatures, BBLInstructionFeatures, FuncStronglyConnectedFeatures, FuncFlagsFeatures]
 
-PROVIDERS = [SPPFeatureProvider(SPP_PROVIDERS)]
+PROVIDERS = [SPPFeatureProvider(SPP_PROVIDERS),DigraphFeatureProvider(), BBLCountProvider()]
 
 def gen_spp(bv):
     results={}
@@ -181,4 +213,4 @@ def gen_spp(bv):
     out.write(json.dumps(results))
     out.close()
 
-PluginCommand.register("SimilarNinja - Generate SPPs", "Generates SPP hashes for all functions", gen_spp)
+PluginCommand.register("SimilarNinja - Generate Feature Vectors", "Generates Feature Vectors for all functions", gen_spp)
