@@ -1,6 +1,7 @@
 from binaryninja import *
 from tarjan_sort import *
 from spp_primes import *
+from llil_categories import *
 import json
 import sys
 
@@ -40,11 +41,20 @@ class BBLEdgeFeatures(SPPBBLProvider):
             ret *= EDGE_IN_CONDITIONAL
 
         return ret
-class BBLInstructionFeatures(SPPBBLProvider):
+class FuncInstructionFeatures(SPPFunctionProvider):
     @staticmethod
-    def calculate(b):
-        # [TODO] Binary Ninja API for instruction classification
-        return 1
+    def calculate(func):
+        ret = 1
+        for block in func.low_level_il:
+            for ins in block:
+                if ins.operation in LLIL_REDIRECT:
+                    ret *= LLIL_FEATURE_REDIRECT
+                elif ins.operation in LLIL_ARITHMETIC:
+                    ret *= LLIL_FEATURE_ARITHMETIC
+                elif ins.operation in LLIL_LOGIC:
+                    ret *= LLIL_FEATURE_LOGIC
+        return ret
+        
 
 class FuncStronglyConnectedFeatures(SPPFunctionProvider):
     @staticmethod
@@ -112,10 +122,12 @@ class SPPFeatureProvider(FeatureProvider):
 
     @staticmethod
     def _primes(n):
+        if n in ALL_PRIMES:
+            return [n]
         # This is slow as hell for large numbers
         i = 0
         primes=[]
-        while n not in ALL_PRIMES and n != 1:
+        while n != 1:
             if n % ALL_PRIMES[i] == 0:
                 primes.append(ALL_PRIMES[i])
                 n = n / ALL_PRIMES[i]
@@ -150,6 +162,9 @@ class SPPFeatureProvider(FeatureProvider):
                     return 1-(float(len(f1_hcf_primes))/len(SPPFeatureProvider._primes(f1)))
             except OverflowError:
                 return 0.0
+            except ZeroDivisionError:
+                log_error("Division by zero: %X %X HCF: %X Primes: %s %s " % (f0,f1,hcf,SPPFeatureProvider._primes(f0),SPPFeatureProvider._primes(f1)))
+                raise
 
 class DigraphFeatureProvider(FeatureProvider):
     def __init__(self):
@@ -201,9 +216,12 @@ class BBLCountProvider(FeatureProvider):
         else:
             return 1-(float(f1-f0)/f1)
 
-SPP_PROVIDERS=[BBLTypeFeatures, BBLEdgeFeatures, BBLInstructionFeatures, FuncStronglyConnectedFeatures, FuncFlagsFeatures]
 
-PROVIDERS = [SPPFeatureProvider(SPP_PROVIDERS),DigraphFeatureProvider(), BBLCountProvider()]
+SPP_PROVIDERS=[BBLTypeFeatures, BBLEdgeFeatures, FuncInstructionFeatures, FuncStronglyConnectedFeatures, FuncFlagsFeatures]
+
+# PROVIDERS = [SPPFeatureProvider(SPP_PROVIDERS),DigraphFeatureProvider(), BBLCountProvider()]
+
+PROVIDERS = [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),BBLCountProvider()]  
 
 def gen_feature(bv):
     results={}
