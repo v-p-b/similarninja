@@ -272,10 +272,10 @@ def match_fvs(data0, data1):
     return res        
 
 def compare_data(bv):
-    #f0=open(get_open_filename_input("filename0:","*"),"r")
-    #f1=open(get_open_filename_input("filename1:","*"),"r")
-    f0=open("/tmp/1291.json","r")
-    f1=open("/tmp/1292.json","r")
+    f0=open(get_open_filename_input("filename0:","*"),"r")
+    f1=open(get_open_filename_input("filename1:","*"),"r")
+    #f0=open("/tmp/1291.json","r")
+    #f1=open("/tmp/1292.json","r")
     data0=json.loads(f0.read())
     data1=json.loads(f1.read())
     log_info("Data sizes: %d %d" % (len(data0), len(data1)))
@@ -314,6 +314,10 @@ def compare_data(bv):
         matches.append(((long(func0), feat0), (long(func_match),feat_match), sim_avg0))
         del data0[func0]
         del data1[func_match]
+    out = open(get_save_filename_input("Filename to save comparison results:","json","compare.json"),"wb")
+    out.write(json.dumps(matches))
+    out.close()
 
 
 PluginCommand.register("SimilarNinja - Generate Feature Vectors", "Generates Feature Vectors for all functions", gen_feature)
+PluginCommand.register("SimilarNinja - Compare", "Generates functions from generated data files", compare_data)
