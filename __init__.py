@@ -218,23 +218,52 @@ def gen_feature(bv):
     out.write(json.dumps(results))
     out.close()
 
+def match_fvs(data0, data1):
+    res=[]
+    for func0 in list(data0.keys()): # So we can delete elements
+        if func0 not in data0: continue
+        feat0 = data0[func0]
+
+        for func1 in list(data1.keys()):
+            if func1 not in data1: continue
+            feat1 = data1[func1]
+            matching=True
+            for i in xrange(0,len(feat1)):
+                if feat0[i] != feat1[i]:
+                    matching=False
+                    break
+            if matching:
+                log_info("%x <-> %x %s (%f)\n%s %s" % (long(func0), long(func1), [], 1.0, feat0, feat1))
+                res.append(((long(func0), feat0), (long(func1),feat1), 1.0))
+                del data0[func0]
+                del data1[func1]
+                break
+    return res        
+
 def compare_data(bv):
-    f0=open(get_open_filename_input("filename0:","*"),"r")
-    f1=open(get_open_filename_input("filename1:","*"),"r")
-    #f0=open("/tmp/1291.json","r")
-    #f1=open("/tmp/1292.json","r")
+    #f0=open(get_open_filename_input("filename0:","*"),"r")
+    #f1=open(get_open_filename_input("filename1:","*"),"r")
+    f0=open("/tmp/1291.json","r")
+    f1=open("/tmp/1292.json","r")
     data0=json.loads(f0.read())
     data1=json.loads(f1.read())
-    func_num=1
-    for func0, feat0 in data0.iteritems():
-        log_info("Function (%d/%d)" % (func_num, len(data0)))
-        func_num+=1
-        if func_num > 100 : return
+    log_info("Data sizes: %d %d" % (len(data0), len(data1)))
+    matches=match_fvs(data0, data1)
+    log_info("Data sizes after matching: %d %d" % (len(data0), len(data1)))
+    return
+    # Inexact matches
+    for func0 in list(data0.keys()): # So we can delete elements
+        if func0 not in data0: continue
+        feat0 = data0[func0]
+
         sims0 = [None] * len(PROVIDERS)
         sim_avg0=0.0
         func_match=None
         feat_match=None
-        for func1, feat1 in data1.iteritems():
+        for func1 in list(data1.keys()):
+            if func1 not in data1: continue
+            feat1 = data1[func1]
+
             sims = [None] * len(PROVIDERS)
             for i, p in enumerate(PROVIDERS):
                 sims[i]=p.compare(feat0[i],feat1[i])
@@ -248,8 +277,12 @@ def compare_data(bv):
                 sims0=sims
                 func_match=func1
                 feat_match=feat1
+            if sim_avg0 == 1.0: break # Exit early for perfect matches
         
         log_info("%x <-> %x %s (%f)\n%s %s" % (long(func0), long(func_match), repr(sims0), sim_avg0, feat0, feat_match))
-                
+        matches.append(((long(func0), feat0), (long(func_match),feat_match), sim_avg0))
+        del data0[func0]
+        del data1[func_match]
+
 
 PluginCommand.register("SimilarNinja - Generate Feature Vectors", "Generates Feature Vectors for all functions", gen_feature)
