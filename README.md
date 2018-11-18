@@ -5,6 +5,17 @@ _Find similar functions with Binary Ninja_
 
 This is a partial implementation of the [KOKA algorithm](http://joxeankoret.com/blog/2018/11/04/new-cfg-based-heuristic-diaphora/) for CFG matching. 
 
+Currently the following algorithms are implemented:
+
+* KOKA features bound together in an SPP hash:
+  * NODE_ENTRY, NODE_EXIT, NODE_NORMAL
+  * EDGE_OUT_CONDITIONAL, EDGE_IN_CONDITIONAL
+  * FEATURE_FUNC_NO_RET, FEATURE_FUNC_LIB
+* Digraph Signature
+* Basic Block Count
+
+Experimental infrastructure is available for exact and partial matching.
+
 Early stage of development, code is unstable. 
 
 ### Why?
@@ -13,7 +24,7 @@ The licensing model of IDA sucks, we need tools for independent frameworks. Also
 
 ### Goals
 
-* Easy fine tuning at src level
+* Easy feature vector composition (at src level)
 * No external databases
   * SQLite based compatibility layer for Diaphora would be nice though
 
@@ -21,12 +32,14 @@ The licensing model of IDA sucks, we need tools for independent frameworks. Also
 
 A lot of things...
 
-* More mathcer algorithms
-  * Support for non-SSP based results
+* More matcher algorithms
   * Algorithms from the [original paper](https://census-labs.com/media/efficient-features-bindiff.pdf):
-    * Dominance tree based 
-* Calculate similarity levels
+    * Markov lumping
+    * String histogram
+    * Instruction histogram (with capstone/pyxed/other external lib?)
 * Better integration with the UI
+* Without a BinaryView we loose cross-function control-flow data, so function predecessors/successors can't be discovered during matching
+  * Multiple ways to handle this, have to decide which way to go...
 
 ### Binary Ninja API deficiencies
 
