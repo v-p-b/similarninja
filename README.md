@@ -11,8 +11,10 @@ Currently the following algorithms are implemented:
   * NODE_ENTRY, NODE_EXIT, NODE_NORMAL
   * EDGE_OUT_CONDITIONAL, EDGE_IN_CONDITIONAL
   * FEATURE_FUNC_NO_RET, FEATURE_FUNC_LIB
-* Digraph Signature
-* Basic Block Count
+* Features from the [original paper](https://census-labs.com/media/efficient-features-bindiff.pdf):
+  * Digraph Signature
+* Others:
+  * Basic Block Count
 
 Experimental infrastructure is available for exact and partial matching.
 
