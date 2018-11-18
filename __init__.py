@@ -51,7 +51,7 @@ class FuncStronglyConnectedFeatures(SPPFunctionProvider):
     def calculate(func):
         bb_relations = {}
         ret = 1
-        for block in func.low_level_il:
+        for block in func.basic_blocks:
             # Creating bb_relations 
             bb_relations[block.start] = []
             for e in block.outgoing_edges:
@@ -218,13 +218,26 @@ def gen_feature(bv):
     out.write(json.dumps(results))
     out.close()
 
+def get_func_predecessors(bv,f):
+    ret=[]
+    for xref in bv.get_code_refs(f.start):
+        x_func = xref.function
+        low_level_il = x_func.get_low_level_il_at(bv.platform.arch, xred.address)
+        il = function.low_level_il[low_level_il]
+        if il.operation ==  LLIL_CALL: 
+            ret.append(x_func.start)
+    return ret
+
 def match_fvs(data0, data1):
     res=[]
-    for func0 in list(data0.keys()): # So we can delete elements
+    ordered_keys0=sorted(data0,key=data0.get,reverse=True)
+    ordered_keys1=sorted(data1,key=data1.get,reverse=True)
+
+    for func0 in ordered_keys0: # So we can delete elements
         if func0 not in data0: continue
         feat0 = data0[func0]
 
-        for func1 in list(data1.keys()):
+        for func1 in ordered_keys1:
             if func1 not in data1: continue
             feat1 = data1[func1]
             matching=True
@@ -250,7 +263,7 @@ def compare_data(bv):
     log_info("Data sizes: %d %d" % (len(data0), len(data1)))
     matches=match_fvs(data0, data1)
     log_info("Data sizes after matching: %d %d" % (len(data0), len(data1)))
-    return
+    # return
     # Inexact matches
     for func0 in list(data0.keys()): # So we can delete elements
         if func0 not in data0: continue
