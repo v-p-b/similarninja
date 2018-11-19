@@ -54,8 +54,15 @@ Invoke the tester function:
 
 | Func # | Correct match | Incorrect match |
 |--------|---------------|-----------------|
-| 3114   | 1600          | 1488            |
+| 3114   | 1600 (51.3%)  | 1488 (47.8%)    |
 
+### SQLite
+
+*3.25.03 vs. 3.25.00 x64 ELF*
+
+| Func # | Correct match | Incorrect match |
+|--------|---------------|-----------------|
+| 3122   | 1432 (45.9%)  | 1689 (54.1%)    |
 
 ## TODO
 
