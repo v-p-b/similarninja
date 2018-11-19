@@ -56,6 +56,11 @@ Invoke the tester function:
 |--------|---------------|-----------------|
 | 3114   | 1600 (51.3%)  | 1488 (47.8%)    |
 
+Feature vector providers:
+```
+[SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),BBLCountProvider()]
+```
+
 ### SQLite
 
 *3.25.03 vs. 3.25.00 x64 ELF*
@@ -63,6 +68,11 @@ Invoke the tester function:
 | Func # | Correct match | Incorrect match |
 |--------|---------------|-----------------|
 | 3122   | 1432 (45.9%)  | 1689 (54.1%)    |
+
+Feature vector providers:
+```
+[SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),BBLCountProvider()]
+```
 
 ## TODO
 
