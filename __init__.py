@@ -274,14 +274,13 @@ def match_fvs(data0, data1):
 def compare_data(bv):
     f0=open(get_open_filename_input("filename0:","*"),"r")
     f1=open(get_open_filename_input("filename1:","*"),"r")
-    #f0=open("/tmp/1291.json","r")
-    #f1=open("/tmp/1292.json","r")
+    
     data0=json.loads(f0.read())
     data1=json.loads(f1.read())
     log_info("Data sizes: %d %d" % (len(data0), len(data1)))
     matches=match_fvs(data0, data1)
     log_info("Data sizes after matching: %d %d" % (len(data0), len(data1)))
-    # return
+    
     # Inexact matches
     for func0 in list(data0.keys()): # So we can delete elements
         if func0 not in data0: continue
@@ -314,9 +313,38 @@ def compare_data(bv):
         matches.append(((long(func0), feat0), (long(func_match),feat_match), sim_avg0))
         del data0[func0]
         del data1[func_match]
-    out = open(get_save_filename_input("Filename to save comparison results:","json","compare.json"),"wb")
+    out = open(get_save_filename_input("Filename to save comparison results:","*","compare.json"),"wb")
     out.write(json.dumps(matches))
     out.close()
+    return matches
+
+def tester(bv0,bv1,result_file):
+    matches=json.loads(open(result_file,"r").read())
+    unknown=0
+    success=0
+    failure=0
+    for m in matches:
+        func0=bv0.get_function_at(m[0][0])
+        if func0 is None or func0.start != m[0][0]:
+            log_info("Switching views")
+            bv1, bv0 = bv0, bv1
+            func0=bv0.get_function_at(m[0][0])
+        func1=bv1.get_function_at(m[1][0])
+        try:
+            if func0.name.startswith("sub_") and func1.name.startswith("sub_"):
+                unknown += 1
+                continue
+        except AttributeError:
+            log_error("Function not found: %x %x" % (m[0][0],m[1][0]))
+            return
+        if func0.name == func1.name:
+            success += 1
+        else:
+            log_info("%s (%x) != %s (%x)" % (func0.name, func0.start, func1.name, func1.start))
+            failure += 1
+    log_info("Success: %d" % success)
+    log_info("Failure: %d" % failure)
+    log_info("Total: %d (%d <-> %d) " % (len(matches), len(bv0.functions), len(bv1.functions)))
 
 
 PluginCommand.register("SimilarNinja - Generate Feature Vectors", "Generates Feature Vectors for all functions", gen_feature)

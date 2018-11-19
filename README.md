@@ -30,6 +30,33 @@ The licensing model of IDA sucks, we need tools for independent frameworks. Also
 * No external databases
   * SQLite based compatibility layer for Diaphora would be nice though
 
+## Testing
+
+Export and compare features of two binaries with symbols. With the corresponding views open, save the current BinaryView objects in the Binary Ninja console:
+
+```
+>>> bv0=bv
+# Switch views on the GUI
+>>> bv1=bv
+```
+
+Invoke the tester function:
+
+```
+>>> similarninja.tester(bv0, bv1, "/path/to/comparison.json")
+```
+
+### Results
+
+### Busybox 
+
+*1.29.1 vs. 1.29.2 x64 ELF*
+
+| Func # | Correct match | Incorrect match |
+|--------|---------------|-----------------|
+| 3114   | 1600          | 1488            |
+
+
 ## TODO
 
 A lot of things...
