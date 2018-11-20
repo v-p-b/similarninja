@@ -15,20 +15,28 @@ Currently the following algorithms are implemented:
   * Digraph Signature
 * Others:
   * Basic Block Count
+  * LLIL instruction types (LLIL_FEATURE_REDIRECT, LLIL_FEATURE_LOGIC, LLIL_FEATURE_ARITHMETIC)
 
 Experimental infrastructure is available for exact and partial matching.
 
 Early stage of development, code is unstable. 
 
+Bugs? Very likely, please use the Issue Tracker!
+
 ### Why?
 
-The licensing model of IDA sucks, we need tools for independent frameworks. Also see Goals.
+The licensing model of IDA sucks, we need tools for independent frameworks. Other design goals:
 
-### Goals
+* Easy feature vector composition - creation of custom similarity metrics should be easy (at src level)
+* No external databases - Redundant data storage should be avoided
+  * It'd be best if custom metadata could be saved in .bndb databases, but AFAIK there is no API for this
+  * SQLite based compatibility layer for Diaphora would be nice 
 
-* Easy feature vector composition (at src level)
-* No external databases
-  * SQLite based compatibility layer for Diaphora would be nice though
+## Customization
+
+You can compose your custom feature vector generator by editing the `PROVIDERS` list. Each list element should be a `FeatureProvider` subclass instance that will be used to calculate similarity metrics for the corresponding vector position. 
+
+For examples see Testing! 
 
 ## Testing
 
@@ -47,6 +55,10 @@ Invoke the tester function:
 ```
 
 ### Results
+
+The following results are based on debug information contained in unstripped binaries (exact function name match).
+
+The current algorithm for partial matches is very liberal and will try to find a match for everything - this is the reason of high incorrect match numbers. However these "incorrect" numbers also contain actual good matches (like matches between `shaX_process_blockN()` functions). 
 
 ### Busybox 
 
@@ -86,6 +98,7 @@ A lot of things...
 * Better integration with the UI
 * Without a BinaryView we loose cross-function control-flow data, so function predecessors/successors can't be discovered during matching
   * Multiple ways to handle this, have to decide which way to go...
+* LICENSE file...
 
 ### Binary Ninja API deficiencies
 
@@ -112,4 +125,3 @@ The following dependencies are required for this plugin:
 ## License
 This plugin is released under a GPLv2 license as required by Diaphora. 
 
-Adding a proper LICENSE file is TODO...
