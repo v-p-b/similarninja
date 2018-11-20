@@ -100,11 +100,11 @@ A lot of things...
   * Multiple ways to handle this, have to decide which way to go...
 * LICENSE file...
 
-### Binary Ninja API deficiencies
+### Binary Ninja API wishlist
 
 * Instruction level classification  
 * Data XRefs
-
+* Adding arbitrary metadata to databases
 
 ## Minimum Version
 
