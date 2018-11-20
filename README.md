@@ -13,6 +13,7 @@ Currently the following algorithms are implemented:
   * FEATURE_FUNC_NO_RET, FEATURE_FUNC_LIB
 * Features from the [original paper](https://census-labs.com/media/efficient-features-bindiff.pdf):
   * Digraph Signature
+  * String histogram
 * Others:
   * Basic Block Count
   * LLIL instruction types (LLIL_FEATURE_REDIRECT, LLIL_FEATURE_LOGIC, LLIL_FEATURE_ARITHMETIC)
@@ -62,7 +63,7 @@ The current algorithm for partial matches is very liberal and will try to find a
 
 ### Busybox 
 
-*1.29.1 vs. 1.29.2 x64 ELF*
+#### 1.29.1 vs. 1.29.2 x64 ELF
 
 | Func # | Correct match | Incorrect match |
 |--------|---------------|-----------------|
@@ -73,9 +74,19 @@ Feature vector providers:
 [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),BBLCountProvider()]
 ```
 
+| Func # | Correct match | Incorrect match |
+|--------|---------------|-----------------|
+| 3114   | 2098 (67.4%)  | 981 (31.5%)     |
+
+Feature vector providers:
+```
+[SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(), StringHistogramProvider()] 
+```
+
+
 ### SQLite
 
-*3.25.03 vs. 3.25.00 x64 ELF*
+#### 3.25.03 vs. 3.25.00 x64 ELF*
 
 | Func # | Correct match | Incorrect match |
 |--------|---------------|-----------------|
@@ -86,6 +97,15 @@ Feature vector providers:
 [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),BBLCountProvider()]
 ```
 
+| Func # | Correct match | Incorrect match |
+|--------|---------------|-----------------|
+| 3122   | 1618 (51.8%)  | 1503 (48.1%)    |
+
+Feature vector providers:
+```
+[SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(), StringHistogramProvider()] 
+```
+
 ## TODO
 
 A lot of things...
@@ -93,7 +113,6 @@ A lot of things...
 * More matcher algorithms
   * Algorithms from the [original paper](https://census-labs.com/media/efficient-features-bindiff.pdf):
     * Markov lumping
-    * String histogram
     * Instruction histogram (with capstone/pyxed/other external lib?)
 * Better integration with the UI
 * Without a BinaryView we loose cross-function control-flow data, so function predecessors/successors can't be discovered during matching
