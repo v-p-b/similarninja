@@ -216,12 +216,68 @@ class BBLCountProvider(FeatureProvider):
         else:
             return 1-(float(f1-f0)/f1)
 
+class StringHistogramProvider(FeatureProvider):
+    def __init__(self):
+        self.cache=None
+
+
+    def calculate(self, func):
+        if self.cache is None:
+            self.cache = {}
+            vectors = {}
+            bv=func.view
+            for s in bv.strings:
+                value = s.value
+                str_xrefs = bv.get_code_refs(s.start)
+                #log_info("--------- %s" % s.value)
+                for x in str_xrefs:
+                    if x.function.start not in vectors:
+                        vectors[x.function.start] = [0]*256
+                    for c in s.value:
+                        vectors[x.function.start][ord(c)] += 1
+                    #log_info(repr(vectors[x.function.start]))
+            for f, c_vec in vectors.iteritems():
+                #log_info("%s" % repr(c_vec))
+                self.cache[f] = 0
+                cmax = 0
+                begin = 0
+                started = False
+                end = 255
+                for i in xrange(0,256):
+                    if c_vec[i] != 0:
+                        if not started:
+                            begin = i
+                            started = True
+                        end = i
+                    if c_vec[i] > cmax:
+                        cmax = c_vec[i]
+                log_info("%d %d %s" % (begin,end,repr(c_vec[begin:end+1])))
+                for i in xrange(begin, end):
+                    self.cache[f] *= 16
+                    self.cache[f] += int((float(c_vec[i])/cmax)*16)
+                log_info("%X" % self.cache[f])
+        if func.start in self.cache:
+            return self.cache[func.start]
+        else:
+            return 0
+
+    @staticmethod
+    def compare(f0,f1):
+        binlen0=float(len(bin(f0)))
+        binlen1=float(len(bin(f1)))
+        hamming=float(bin(f0^f1).count('1'))
+        if binlen0 >= binlen1:
+            return 1.0-(hamming/binlen0)
+        else:
+            return 1.0-(hamming/binlen1)
 
 SPP_PROVIDERS=[BBLTypeFeatures, BBLEdgeFeatures, FuncInstructionFeatures, FuncStronglyConnectedFeatures, FuncFlagsFeatures]
 
 # PROVIDERS = [SPPFeatureProvider(SPP_PROVIDERS),DigraphFeatureProvider(), BBLCountProvider()]
 
-PROVIDERS = [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),BBLCountProvider()]  
+PROVIDERS = [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),StringHistogramProvider()]  
+
+#PROVIDERS = [StringHistogramProvider()]
 
 def gen_feature(bv):
     results={}
@@ -232,7 +288,7 @@ def gen_feature(bv):
             results[idx][i] = p.calculate(func)
         
     log_info(repr(results))
-    out = open(get_save_filename_input("Filename to save function hashes:","json","output.json"),"wb")
+    out = open(get_save_filename_input("Filename to save function hashes:","*","output.json"),"wb")
     out.write(json.dumps(results))
     out.close()
 
@@ -338,6 +394,7 @@ def tester(bv0,bv1,result_file):
             log_error("Function not found: %x %x" % (m[0][0],m[1][0]))
             return
         if func0.name == func1.name:
+            log_info("%s (%x) == %s (%x)" % (func0.name, func0.start, func1.name, func1.start))
             success += 1
         else:
             log_info("%s (%x) != %s (%x)" % (func0.name, func0.start, func1.name, func1.start))
