@@ -30,8 +30,11 @@ The licensing model of IDA sucks, we need tools for independent frameworks. Othe
 
 * Easy feature vector composition - creation of custom similarity metrics should be easy (at src level)
 * No external databases - Redundant data storage should be avoided
-  * It'd be best if custom metadata could be saved in .bndb databases, but AFAIK there is no API for this
   * SQLite based compatibility layer for Diaphora would be nice 
+
+### Usage
+
+The plugin adds two menu items: one for generating feature vetors for the functions of a binary, another for comparing the results of the previous one. Results can be saves to standalone JSON files or along with the analysis data in the BNDB database (the later is recommended). When comparing results the plugin tries to load raw JSON formatted data unless the extension of the opened file is ".bndb" - in that case the JSON object is read from database metadta. Comparison results can be saved to standalone JSON files.
 
 ## Customization
 
@@ -123,7 +126,6 @@ A lot of things...
 
 * Instruction level classification  
 * Data XRefs
-* Adding arbitrary metadata to databases
 
 ## Minimum Version
 
