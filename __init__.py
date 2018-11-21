@@ -286,11 +286,14 @@ def gen_feature(bv):
         results[idx] = [None] * len(PROVIDERS)
         for i,p in enumerate(PROVIDERS):
             results[idx][i] = p.calculate(func)
-        
     log_info(repr(results))
-    out = open(get_save_filename_input("Filename to save function hashes:","*","output.json"),"wb")
-    out.write(json.dumps(results))
-    out.close()
+    if show_message_box("SimilarNinja","Do you want to save the results to the Binary Ninja database?", MessageBoxButtonSet.YesNoButtonSet, MessageBoxIcon.QuestionIcon) == 1:
+        # Storing as JSON is wasteful, but more secure than Pickle... good enough for now
+        bv.store_metadata("similarninja",json.dumps(results))
+    else:
+        out = open(get_save_filename_input("Filename to save function hashes:","*","output.json"),"wb")
+        out.write(json.dumps(results))
+        out.close()
 
 def get_func_predecessors(bv,f):
     ret=[]
@@ -328,11 +331,40 @@ def match_fvs(data0, data1):
     return res        
 
 def compare_data(bv):
-    f0=open(get_open_filename_input("filename0:","*"),"r")
-    f1=open(get_open_filename_input("filename1:","*"),"r")
+    fn0 = get_open_filename_input("filename0:","*")
+    fn1 = get_open_filename_input("filename1:","*")
+
+    data0 = None
+    data1 = None
     
-    data0=json.loads(f0.read())
-    data1=json.loads(f1.read())
+    if fn0.endswith(".bndb"):
+        fm = FileMetadata()
+        db0 = fm.open_existing_database(fn0)
+        for t in db0.available_view_types:
+            try:
+                bv0= db0.get_view_of_type(t.name)
+                data0 = json.loads(bv0.query_metadata("similarninja"))
+                break
+            except KeyError:
+                pass
+    else:
+        f0 = open(fn0, "r")
+        data0=json.loads(f0.read())
+    
+    if fn1.endswith(".bndb"):
+        fm = FileMetadata()
+        db1 = fm.open_existing_database(fn1)
+        for t in db1.available_view_types:
+            try:
+                bv1 = db1.get_view_of_type(t.name)
+                data1 = json.loads(bv1.query_metadata("similarninja"))
+                break
+            except KeyError:
+                pass
+    else:
+        f1 = open(fn1, "r")
+        data1=json.loads(f1.read())
+
     log_info("Data sizes: %d %d" % (len(data0), len(data1)))
     matches=match_fvs(data0, data1)
     log_info("Data sizes after matching: %d %d" % (len(data0), len(data1)))
