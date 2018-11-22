@@ -34,9 +34,9 @@ The licensing model of IDA sucks, we need tools for independent frameworks. Othe
 
 ### Usage
 
-The plugin adds two menu items: one for generating feature vetors for the functions of a binary, another for comparing the results of the previous one. Results can be saved to standalone JSON files or along with the analysis data in the BNDB database (the later is recommended). When comparing results the plugin tries to load raw JSON formatted data unless the extension of the opened file is ".bndb" - in that case the JSON object is read from database metadta. Comparison results can be saved to standalone JSON files.
+The plugin adds two menu items: one for generating feature vetors for the functions of a binary, another for comparing the results of the previous one. Results can be saved to standalone JSON files or along with the analysis data in the BNDB database (the later is recommended). When comparing results the plugin tries to load raw JSON formatted data unless the extension of the opened file is ".bndb" - in that case the JSON object is read from database metadata. Comparison results can be saved to standalone JSON files.
 
-Beware that some feature extractor classes can be stateful. When working with multiple view is usually a good idea to `reload(simpleninja)` the Python Console when using it on a different tab.
+Beware that some feature extractor classes can be stateful. When working with multiple views it is usually a good idea to `reload(similarninja)` in the Python Console when using it on a different tab.
 
 ## Customization
 
