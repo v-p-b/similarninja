@@ -15,6 +15,14 @@ class SPPFunctionProvider:
     def calculate(func):
         pass
 
+class FeatureProvider:
+    def calculate(self, func):
+        pass
+
+    @staticmethod
+    def compare(f0, f1):
+        pass
+
 class BBLTypeFeatures(SPPBBLProvider):
     @staticmethod
     def calculate(b):
@@ -41,6 +49,7 @@ class BBLEdgeFeatures(SPPBBLProvider):
             ret *= EDGE_IN_CONDITIONAL
 
         return ret
+
 class FuncInstructionFeatures(SPPFunctionProvider):
     @staticmethod
     def calculate(func):
@@ -55,7 +64,6 @@ class FuncInstructionFeatures(SPPFunctionProvider):
                     ret *= LLIL_FEATURE_LOGIC
         return ret
         
-
 class FuncStronglyConnectedFeatures(SPPFunctionProvider):
     @staticmethod
     def calculate(func):
@@ -85,8 +93,6 @@ class FuncStronglyConnectedFeatures(SPPFunctionProvider):
             log_error("Exception: %s" % (sys.exc_info()[1]))
         return ret
 
-
-
 class FuncFlagsFeatures(SPPFunctionProvider):
     @staticmethod
     def calculate(func):
@@ -97,14 +103,6 @@ class FuncFlagsFeatures(SPPFunctionProvider):
             ret *= FEATURE_FUNC_LIB
         # [TODO] Binary Ninja API for Thunks
         return ret
-
-class FeatureProvider:
-    def calculate(self, func):
-        pass
-
-    @staticmethod
-    def compare(f0, f1):
-        pass
 
 class SPPFeatureProvider(FeatureProvider):
     def __init__(self, features=[]):
@@ -222,6 +220,8 @@ class StringHistogramProvider(FeatureProvider):
 
 
     def calculate(self, func):
+        # String info is available for the global BinaryView
+        # String histograms are calculated and cached at first call
         if self.cache is None:
             self.cache = {}
             vectors = {}
@@ -230,6 +230,8 @@ class StringHistogramProvider(FeatureProvider):
                 value = s.value
                 str_xrefs = bv.get_code_refs(s.start)
                 #log_info("--------- %s" % s.value)
+
+                # Updating character counts for all functions referencing the current string
                 for x in str_xrefs:
                     if x.function.start not in vectors:
                         vectors[x.function.start] = [0]*256
@@ -243,6 +245,8 @@ class StringHistogramProvider(FeatureProvider):
                 begin = 0
                 started = False
                 end = 255
+
+                # Find maximum and cut empty ends
                 for i in xrange(0,256):
                     if c_vec[i] != 0:
                         if not started:
@@ -251,11 +255,14 @@ class StringHistogramProvider(FeatureProvider):
                         end = i
                     if c_vec[i] > cmax:
                         cmax = c_vec[i]
-                log_info("%d %d %s" % (begin,end,repr(c_vec[begin:end+1])))
+                #log_info("%d %d %s" % (begin,end,repr(c_vec[begin:end+1])))
+
+                # Normalize charcter counts to 0-15 and encode vector as integer
+                # [4,0,8,0,16,8,4,2] -> 0x3070f731
                 for i in xrange(begin, end):
                     self.cache[f] *= 16
-                    self.cache[f] += int((float(c_vec[i])/cmax)*16)
-                log_info("%X" % self.cache[f])
+                    self.cache[f] += int((float(c_vec[i])/cmax)*15)
+                #log_info("%X" % self.cache[f])
         if func.start in self.cache:
             return self.cache[func.start]
         else:
@@ -276,8 +283,6 @@ SPP_PROVIDERS=[BBLTypeFeatures, BBLEdgeFeatures, FuncInstructionFeatures, FuncSt
 # PROVIDERS = [SPPFeatureProvider(SPP_PROVIDERS),DigraphFeatureProvider(), BBLCountProvider()]
 
 PROVIDERS = [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),StringHistogramProvider()]  
-
-#PROVIDERS = [StringHistogramProvider()]
 
 def gen_feature(bv):
     results={}
@@ -437,4 +442,4 @@ def tester(bv0,bv1,result_file):
 
 
 PluginCommand.register("SimilarNinja - Generate Feature Vectors", "Generates Feature Vectors for all functions", gen_feature)
-PluginCommand.register("SimilarNinja - Compare", "Generates functions from generated data files", compare_data)
+PluginCommand.register("SimilarNinja - Compare", "Compare functions based on generated data files", compare_data)
