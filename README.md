@@ -40,9 +40,26 @@ Beware that some feature extractor classes can be stateful. When working with mu
 
 ## Customization
 
-You can compose your custom feature vector generator by editing the `PROVIDERS` list. Each list element should be a `FeatureProvider` subclass instance that will be used to calculate similarity metrics for the corresponding vector position. 
+You can compose your custom feature vector generator by editing the `PROVIDERS` list. Each list element should be a `FeatureProvider` subclass instance or a tuple. The `FeatureProvider`  will be used to calculate similarity metrics for the corresponding vector position. In case of tuples the first element should be the `FeatureProvider` instance, while the second one is a float that will be used as a weight for the element. The default weight for each element is 1.0.    
 
-For examples see Testing! 
+### Examples
+
+Using String Histogram with a Small Primes Product of the Stringly Connected Features and Function Flags. Both features have a weight of 1.0 when comparing:
+
+```
+[StringHistogramProvider(), 
+SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures])]
+```
+
+
+Using String Histogram with the Stringly Connected Features and Function Flags as separate prime products. String Histogram has doubled weight:
+
+```
+[(StringHistogramProvider(), 2.0), 
+SPPFeatureProvider([FuncStronglyConnectedFeatures]), 
+SPPFeatureProvider([FuncFlagsFeatures])]
+```
+
 
 ## Testing
 
