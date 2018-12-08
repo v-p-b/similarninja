@@ -15,7 +15,7 @@
 			"installers": [],
 			"other": []
 		},
-		"version": "0.1 alpha",
+		"version": "0.2 alpha",
 		"author": "buherator",
 		"minimumBinaryNinjaVersion": {
 			"dev": "1.0.dev-576",

@@ -1,4 +1,4 @@
-# SimilarNinja Plugin (v0.1 alpha)
+# SimilarNinja Plugin (v0.2 alpha)
 Author: **buherator**
 _Find similar functions with Binary Ninja_
 ## Description:
@@ -63,7 +63,7 @@ SPPFeatureProvider([FuncFlagsFeatures])]
 
 ## Testing
 
-Export and compare features of two binaries with symbols. With the corresponding views open, save the current BinaryView objects in the Binary Ninja console:
+With the corresponding views open, save the current BinaryView objects in the Binary Ninja console:
 
 ```
 >>> bv0=bv
@@ -74,8 +74,12 @@ Export and compare features of two binaries with symbols. With the corresponding
 Invoke the tester function:
 
 ```
->>> similarninja.tester(bv0, bv1, "/path/to/comparison.json")
+>>> similarninja.tester(bv0, bv1)
 ```
+
+This will do the feature extraction (features stored in the database for later use) and comparison, then uses the available symbol information to measure accuracy. 
+
+The function allows testing multiple feature provider compositions at once, refer to the source for details!
 
 ### Results
 
