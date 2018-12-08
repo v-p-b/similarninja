@@ -4,11 +4,39 @@ import json
 
 PROVIDERS = [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),(StringHistogramProvider(), 2.0)]  
 
+def get_func_predecessors(bv,f):
+    ret=[]
+    for xref in bv.get_code_refs(f.start):
+        x_func = xref.function
+        low_level_il = x_func.get_low_level_il_at(bv.platform.arch, xred.address)
+        il = function.low_level_il[low_level_il]
+        if il.operation ==  LLIL_CALL: 
+            ret.append(x_func.start)
+    return ret
+
+def load_data(self, fn0):
+    data0 = None
+    if fn0.endswith(".bndb"):
+        fm = FileMetadata()
+        db0 = fm.open_existing_database(fn0)
+        for t in db0.available_view_types:
+            try:
+                bv0= db0.get_view_of_type(t.name)
+                data0 = json.loads(bv0.query_metadata("similarninja"))
+                break
+            except KeyError:
+                pass
+    else:
+        f0 = open(fn0, "r")
+        data0=json.loads(f0.read())
+    return data0
+
 class FeatureGenerator(BackgroundTaskThread):
-    def __init__(self, bv, providers):
+    def __init__(self, bv, providers, self_contained=None):
         super(FeatureGenerator, self).__init__("", False)
         self.bv = bv
         self.providers = providers
+        self.self_contained = self_contained
 
     def run(self):
         results={}
@@ -23,7 +51,7 @@ class FeatureGenerator(BackgroundTaskThread):
                 results[idx][i] = p.calculate(func)
         self.progress = "Done generating features"    
         log_info(repr(results))
-        if show_message_box("SimilarNinja","Do you want to save the results to the Binary Ninja database?", MessageBoxButtonSet.YesNoButtonSet, MessageBoxIcon.QuestionIcon) == 1:
+        if self.self_contained or show_message_box("SimilarNinja","Do you want to save the results to the Binary Ninja database?", MessageBoxButtonSet.YesNoButtonSet, MessageBoxIcon.QuestionIcon) == 1:
             # Storing as JSON is wasteful, but more secure than Pickle... good enough for now
             self.bv.store_metadata("similarninja",json.dumps(results))
         else:
@@ -32,22 +60,13 @@ class FeatureGenerator(BackgroundTaskThread):
             out.close()
         self.finish()
 
-def get_func_predecessors(bv,f):
-    ret=[]
-    for xref in bv.get_code_refs(f.start):
-        x_func = xref.function
-        low_level_il = x_func.get_low_level_il_at(bv.platform.arch, xred.address)
-        il = function.low_level_il[low_level_il]
-        if il.operation ==  LLIL_CALL: 
-            ret.append(x_func.start)
-    return ret
-
-
 class SimilarNinjaComparer(BackgroundTaskThread):
-    def __init__(self, providers):
+    def __init__(self, providers, data0=None, data1=None, result=None):
         super(SimilarNinjaComparer, self).__init__("", False)
         self.providers = providers
-
+        self.data0 = data0
+        self.data1 = data1
+        self.result = result
 
     def match_fvs(self, data0, data1):
         res=[]
@@ -74,44 +93,24 @@ class SimilarNinjaComparer(BackgroundTaskThread):
                     break
         return res        
 
-
     def run(self):        
         self.progress="Opening files for comparison"
-
-        fn0 = get_open_filename_input("filename0:","*")
-        fn1 = get_open_filename_input("filename1:","*")
 
         data0 = None
         data1 = None
         
-        if fn0.endswith(".bndb"):
-            fm = FileMetadata()
-            db0 = fm.open_existing_database(fn0)
-            for t in db0.available_view_types:
-                try:
-                    bv0= db0.get_view_of_type(t.name)
-                    data0 = json.loads(bv0.query_metadata("similarninja"))
-                    break
-                except KeyError:
-                    pass
+        if self.data0 is not None:
+            data0 = self.data0
         else:
-            f0 = open(fn0, "r")
-            data0=json.loads(f0.read())
+            fn0 = get_open_filename_input("filename0:","*")
+            data0 = load_data(fn0)
         
-        if fn1.endswith(".bndb"):
-            fm = FileMetadata()
-            db1 = fm.open_existing_database(fn1)
-            for t in db1.available_view_types:
-                try:
-                    bv1 = db1.get_view_of_type(t.name)
-                    data1 = json.loads(bv1.query_metadata("similarninja"))
-                    break
-                except KeyError:
-                    pass
+        if self.data1 is not None:
+            data1 = self.data1
         else:
-            f1 = open(fn1, "r")
-            data1=json.loads(f1.read())
-
+            fn1 = get_open_filename_input("filename1:","*")
+            data1 = load_data(fn1)
+        
         self.progress="Comparing..."
         data0_len = len(data0)
         data1_len = len(data1)
@@ -161,43 +160,70 @@ class SimilarNinjaComparer(BackgroundTaskThread):
                 del data0[func0]
                 del data1[func_match]
         
-        result_fn = get_save_filename_input("Filename to save comparison results:","*","compare.json")
+        result_fn = None
+        if self.result is None:
+            result_fn = get_save_filename_input("Filename to save comparison results:","*","compare.json")
+        else:
+            result_fn = self.result
         if result_fn is not None:
             out = open(result_fn, "wb")
             out.write(json.dumps(matches))
             out.close()
+        self.matches = matches
         self.finish()
-        return matches
+        
 
-def tester(bv0,bv1,result_file):
-    matches=json.loads(open(result_file,"r").read())
+def tester(bv0, bv1):
+    providers_list = [
+                        [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(), StringHistogramProvider()] ,
+                     ]
 
-    unknown=0
-    success=0
-    failure=0
-    for m in matches:
-        func0=bv0.get_function_at(m[0][0])
-        if func0 is None or func0.start != m[0][0]:
-            log_info("Switching views")
-            bv1, bv0 = bv0, bv1
+    for p in providers_list:
+        fgen0=FeatureGenerator(bv0, p, True)
+        fgen0.start()        
+
+        fgen1=FeatureGenerator(bv1, p, True)
+        fgen1.start()        
+        
+        fgen0.join()
+        fgen1.join()
+
+        data0 = json.loads(bv0.query_metadata("similarninja"))
+        data1 = json.loads(bv1.query_metadata("similarninja"))
+
+        sn_comparer=SimilarNinjaComparer(p, data0, data1, "/dev/null")
+        sn_comparer.start()
+        sn_comparer.join()
+
+        matches=sn_comparer.matches
+
+        unknown=0
+        success=0
+        failure=0
+        for m in matches:
             func0=bv0.get_function_at(m[0][0])
-        func1=bv1.get_function_at(m[1][0])
-        try:
-            if func0.name.startswith("sub_") and func1.name.startswith("sub_"):
-                unknown += 1
-                continue
-        except AttributeError:
-            log_error("Function not found: %x %x" % (m[0][0],m[1][0]))
-            return
-        if func0.name == func1.name:
-            log_info("%s (%x) == %s (%x)" % (func0.name, func0.start, func1.name, func1.start))
-            success += 1
-        else:
-            log_info("%s (%x) != %s (%x)" % (func0.name, func0.start, func1.name, func1.start))
-            failure += 1
-    log_info("Success: %d" % success)
-    log_info("Failure: %d" % failure)
-    log_info("Total: %d (%d <-> %d) " % (len(matches), len(bv0.functions), len(bv1.functions)))
+            if func0 is None or func0.start != m[0][0]:
+                log_info("Switching views")
+                bv1, bv0 = bv0, bv1
+                func0=bv0.get_function_at(m[0][0])
+            func1=bv1.get_function_at(m[1][0])
+            try:
+                if func0.name.startswith("sub_") and func1.name.startswith("sub_"):
+                    unknown += 1
+                    continue
+            except AttributeError:
+                log_error("Function not found: %x %x" % (m[0][0],m[1][0]))
+                return
+            if func0.name == func1.name:
+                log_info("%s (%x) == %s (%x)" % (func0.name, func0.start, func1.name, func1.start))
+                success += 1
+            else:
+                log_info("%s (%x) != %s (%x)" % (func0.name, func0.start, func1.name, func1.start))
+                failure += 1
+        log_info("PROVIDERS: %s" % repr(p))
+        log_info("\\_ Success: %d" % success)
+        log_info("\\_ Failure: %d" % failure)
+        log_info("\\_ Total: %d (%d <-> %d) \n" % (len(matches), len(bv0.functions), len(bv1.functions)))
 
 def compare(bv):
     sn_comparer=SimilarNinjaComparer(PROVIDERS)
