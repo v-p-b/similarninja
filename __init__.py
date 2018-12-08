@@ -282,7 +282,7 @@ SPP_PROVIDERS=[BBLTypeFeatures, BBLEdgeFeatures, FuncInstructionFeatures, FuncSt
 
 # PROVIDERS = [SPPFeatureProvider(SPP_PROVIDERS),DigraphFeatureProvider(), BBLCountProvider()]
 
-PROVIDERS = [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),StringHistogramProvider()]  
+PROVIDERS = [SPPFeatureProvider([BBLTypeFeatures]), SPPFeatureProvider([BBLEdgeFeatures]), SPPFeatureProvider([FuncInstructionFeatures]), SPPFeatureProvider([FuncStronglyConnectedFeatures, FuncFlagsFeatures]), DigraphFeatureProvider(),(StringHistogramProvider(), 2.0)]  
 
 def gen_feature(bv):
     results={}
@@ -290,6 +290,8 @@ def gen_feature(bv):
         idx=long(func.start)
         results[idx] = [None] * len(PROVIDERS)
         for i,p in enumerate(PROVIDERS):
+            if isinstance(p, tuple):
+                p = p[0]
             results[idx][i] = p.calculate(func)
     log_info(repr(results))
     if show_message_box("SimilarNinja","Do you want to save the results to the Binary Ninja database?", MessageBoxButtonSet.YesNoButtonSet, MessageBoxIcon.QuestionIcon) == 1:
@@ -380,6 +382,8 @@ class SimilarNinjaComparer(BackgroundTaskThread):
             data1=json.loads(f1.read())
 
         self.progress="Comparing..."
+        data0_len = len(data0)
+        data1_len = len(data1)
 
         log_info("Data sizes: %d %d" % (len(data0), len(data1)))
         matches=self.match_fvs(data0, data1)
@@ -399,28 +403,38 @@ class SimilarNinjaComparer(BackgroundTaskThread):
                 feat1 = data1[func1]
 
                 sims = [None] * len(PROVIDERS)
+                weight_sum = 0.0
                 for i, p in enumerate(PROVIDERS):
-                    sims[i]=p.compare(feat0[i],feat1[i])
-                sim_avg=0.0
+                    weight = 1.0
+                    if isinstance(p, tuple):
+                        weight = p[1]
+                        p = p[0]
+                    sims[i] = p.compare(feat0[i],feat1[i])*weight
+                    weight_sum += weight
+                sim_avg = 0.0
                 for s in sims:
                     sim_avg += s
-                sim_avg = sim_avg / len(sims)        
+                sim_avg = sim_avg / weight_sum        
 
                 if sim_avg > sim_avg0:
-                    sim_avg0=sim_avg
-                    sims0=sims
-                    func_match=func1
-                    feat_match=feat1
+                    sim_avg0 = sim_avg
+                    sims0 = sims
+                    func_match = func1
+                    feat_match = feat1
                 if sim_avg0 == 1.0: break # Exit early for perfect matches
             
             log_info("%x <-> %x %s (%f)\n%s %s" % (long(func0), long(func_match), repr(sims0), sim_avg0, feat0, feat_match))
             matches.append(((long(func0), feat0), (long(func_match),feat_match), sim_avg0))
+            self.progress = "Matches: %d (%d <-> %d)" % (len(matches), data0_len, data1_len)
             del data0[func0]
             del data1[func_match]
+        
+        result_fn = get_save_filename_input("Filename to save comparison results:","*","compare.json")
+        if result_fn is not None:
+            out = open(result_fn, "wb")
+            out.write(json.dumps(matches))
+            out.close()
         self.finish()
-        out = open(get_save_filename_input("Filename to save comparison results:","*","compare.json"),"wb")
-        out.write(json.dumps(matches))
-        out.close()
         return matches
 
 def tester(bv0,bv1,result_file):
