@@ -119,6 +119,7 @@ class SPPFeatureProvider(FeatureProvider):
 
     @staticmethod
     def _primes(n):
+        # http://outslide.tumblr.com/post/167558674272
         if n in ALL_PRIMES:
             return [n]
         # This is slow as hell for large numbers
