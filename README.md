@@ -1,3 +1,7 @@
+# Deprecation
+
+This project is deprecated as [binexport](https://github.com/google/binexport) supports Binary Ninja too these days.
+
 # SimilarNinja Plugin (v0.2 alpha)
 Author: **buherator**
 _Find similar functions with Binary Ninja_
